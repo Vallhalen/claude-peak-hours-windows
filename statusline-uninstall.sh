@@ -1,31 +1,28 @@
 #!/bin/bash
 set -e
 
-TARGET="$HOME/.claude/statusline.sh"
-BACKUP="${TARGET}.backup"
-SETTINGS="$HOME/.claude/settings.json"
+HELPER="$HOME/.claude/peak-hours-status.sh"
+STATUSLINE="$HOME/.claude/statusline.sh"
 
-echo "Uninstalling Claude Peak Hours status line..."
+MARKER_START="# >>> claude-peak-hours"
+MARKER_END="# <<< claude-peak-hours"
 
-# Remove script
-if [ -f "$TARGET" ]; then
-    rm "$TARGET"
-    echo "Removed $TARGET"
+echo "Uninstalling Claude Peak Hours status line plugin..."
+
+# Remove helper script
+if [ -f "$HELPER" ]; then
+    rm "$HELPER"
+    echo "Removed peak-hours-status.sh"
 fi
 
-# Restore backup if exists
-if [ -f "$BACKUP" ]; then
-    mv "$BACKUP" "$TARGET"
-    echo "Restored previous statusline from backup"
-fi
-
-# Remove statusLine from settings.json
-if [ -f "$SETTINGS" ] && grep -q "statusLine" "$SETTINGS"; then
-    tmp=$(mktemp)
-    jq 'del(.statusLine)' "$SETTINGS" > "$tmp"
-    mv "$tmp" "$SETTINGS"
-    echo "Removed statusLine from $SETTINGS"
+# Remove only the injected section from statusline
+if [ -f "$STATUSLINE" ] && grep -q "$MARKER_START" "$STATUSLINE"; then
+    sed -i.tmp "/$MARKER_START/,/$MARKER_END/d" "$STATUSLINE"
+    rm -f "${STATUSLINE}.tmp"
+    echo "Removed peak-hours plugin from statusline (rest untouched)"
+else
+    echo "No peak-hours plugin found in statusline"
 fi
 
 echo ""
-echo "Done! Restart Claude Code to apply changes."
+echo "Done! Your existing status line is preserved. Restart Claude Code to apply."
