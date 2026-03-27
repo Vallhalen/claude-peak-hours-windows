@@ -58,15 +58,13 @@ cp -r "build/Claude Peak Hours.app" /Applications/
 Status peak/off-peak z odliczaniem w terminalu Claude Code. Działa na **macOS, Linux i Windows**.
 
 ```
-Claude │ ████████░░░░░░░░░░░░ 40% │ 🟢 OK 6h 34m
-Claude │ ██████████████░░░░░░ 72% │ 🔴 PEAK 2h 15m
+... │ 🟢 OK 6h 34m
+... │ 🔴 PEAK 2h 15m
 ```
 
 ### Funkcje
 - **🟢 OK 6h 34m** — off-peak, odliczanie do następnego peak
 - **🔴 PEAK 2h 15m** — godziny ograniczeń, odliczanie do końca
-- **Pasek kontekstu** — zużycie okna kontekstowego z kolorami (zielony/żółty/czerwony)
-- **Ostrzeżenie** — ⚠ COMPACT gdy kontekst > 80%
 
 ### Wymagania
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
