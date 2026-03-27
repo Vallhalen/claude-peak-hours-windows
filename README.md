@@ -10,6 +10,8 @@ Dwa narzędzia — wybierz to, które pasuje do Twojego flow:
 
 ## 1. Aplikacja macOS Menu Bar
 
+<img src="docs/screenshots/macos-menu-bar.png" alt="Claude Peak Hours - macOS Menu Bar" width="300">
+
 Zawsze widoczny wskaźnik obok zegarka.
 
 ### Funkcje
@@ -54,6 +56,8 @@ cp -r "build/Claude Peak Hours.app" /Applications/
 ---
 
 ## 2. Status Line dla Claude Code
+
+<img src="docs/screenshots/claude-code-statusline.png" alt="Claude Code Status Line - Peak Hours" width="600">
 
 Status peak/off-peak z odliczaniem w terminalu Claude Code. Działa na **macOS, Linux i Windows**.
 
