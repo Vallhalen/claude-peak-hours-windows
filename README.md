@@ -70,33 +70,39 @@ Claude │ ██████████████░░░░░░ 72% │ 
 
 ### Requirements
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
-- `jq` — JSON parser
-  - macOS: `brew install jq`
-  - Linux: `sudo apt install jq`
-  - Windows: `choco install jq`
+- **macOS / Linux**: `jq` (`brew install jq` / `sudo apt install jq`)
+- **Windows**: PowerShell 5.1+ (built-in)
 
-### Install
+### Install — macOS / Linux
 
 ```bash
 curl -sL https://raw.githubusercontent.com/studiogo/claude-peak-hours/main/statusline-install.sh | bash
 ```
 
-This will:
-1. Download the status line script to `~/.claude/statusline.sh`
-2. Back up your existing statusline (if any) to `~/.claude/statusline.sh.backup`
-3. Add `statusLine` config to `~/.claude/settings.json`
-4. Restart Claude Code to see it
+### Install — Windows (PowerShell)
 
-### Uninstall
+```powershell
+irm https://raw.githubusercontent.com/studiogo/claude-peak-hours/main/statusline-install.ps1 | iex
+```
+
+The installer:
+1. Downloads the peak-hours helper to `~/.claude/`
+2. Adds peak hours segment to your existing statusline (doesn't overwrite it)
+3. Configures `settings.json` if needed
+
+### Uninstall — macOS / Linux
 
 ```bash
 curl -sL https://raw.githubusercontent.com/studiogo/claude-peak-hours/main/statusline-uninstall.sh | bash
 ```
 
-This will:
-1. Remove the statusline script
-2. Restore your previous statusline from backup (if any)
-3. Remove `statusLine` from `settings.json`
+### Uninstall — Windows (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/studiogo/claude-peak-hours/main/statusline-uninstall.ps1 | iex
+```
+
+The uninstaller removes **only** the peak hours segment — your existing statusline stays intact.
 
 ---
 
