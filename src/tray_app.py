@@ -268,6 +268,8 @@ class PopupWindow:
 
         frame = ttk.Frame(win, padding=16)
         frame.pack(fill="both", expand=True)
+        self._frame = frame
+        self._warn_label = None
 
         # --- Status dot (PIL anti-aliased) + Header ---
         hdr = ttk.Frame(frame)
@@ -380,20 +382,15 @@ class PopupWindow:
 
     def _show_autostart_warning(self):
         """Show warning label under the autostart toggle."""
-        if hasattr(self, "_warn_label") and self._warn_label:
-            return  # already showing
-        if not self._win:
+        if self._warn_label:
             return
-        # Find the frame (first child of win)
-        for child in self._win.winfo_children():
-            self._warn_label = ttk.Label(
-                child, text=AUTOSTART_WARN,
-                font=("Segoe UI", 8),
-                foreground="#c44",
-                wraplength=260,
-            )
-            self._warn_label.pack(anchor="w", pady=(2, 0))
-            break
+        self._warn_label = ttk.Label(
+            self._frame, text=AUTOSTART_WARN,
+            font=("Segoe UI", 8),
+            foreground="#c44",
+            wraplength=260,
+        )
+        self._warn_label.pack(anchor="w", pady=(2, 0))
 
     def _on_notifications(self):
         self.manager.notifications_enabled = self._notif_var.get()
