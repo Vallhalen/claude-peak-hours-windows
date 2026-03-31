@@ -1,112 +1,53 @@
-# Claude Peak Hours
+# Claude Peak Hours — Windows
 
 Wiedz, kiedy korzystać z Claude'a na full, a kiedy oszczędzać tokeny.
 
-W godzinach peak (dni robocze 5:00–11:00 PT / 14:00–20:00 CET) Anthropic stosuje ostrzejsze limity sesji. Te narzędzia dają Ci wyraźny wskaźnik, żebyś nigdy nie został zaskoczony throttlingiem.
+W godzinach peak (dni robocze 5:00–11:00 PT / 14:00–20:00 CET) Anthropic stosuje ostrzejsze limity sesji. Ta appka daje Ci wyraźny wskaźnik w system tray, żebyś nigdy nie został zaskoczony throttlingiem.
 
-Dwa narzędzia — wybierz to, które pasuje do Twojego flow:
+## Aplikacja System Tray
 
----
-
-## 1. Aplikacja macOS Menu Bar
-
-<img src="docs/screenshots/macos-menu-bar.png" alt="Claude Peak Hours - macOS Menu Bar" width="300">
-
-Zawsze widoczny wskaźnik obok zegarka.
+Zawsze widoczny wskaźnik obok zegarka — zielona/czerwona/żółta kropka.
 
 ### Funkcje
-- **Wskaźnik w menu barze** — 🟢 Pełna moc / 🔴 Ograniczenia / 🟡 Ostrzeżenie
-- **Popover ze szczegółami** — kliknij, żeby zobaczyć odliczanie, godziny ograniczeń w Twojej strefie czasowej
-- **Powiadomienia** — opcjonalne alerty macOS na start/koniec peak i 15 min przed zmianą
-- **Autostart** — opcjonalne uruchamianie przy starcie systemu
-- **Lokalizacja** — polski i angielski, automatycznie wykrywany z języka systemu
-- **Lekka** — natywny Swift + SwiftUI, zero zależności
 
-### Wymagania
-- macOS 13 (Ventura) lub nowszy
-- Xcode Command Line Tools (`xcode-select --install`)
+- **Ikona w tray** — 🟢 Pełna moc / 🔴 Ograniczenia / 🟡 Ostrzeżenie (15 min przed zmianą)
+- **Popup ze szczegółami** — kliknij ikonę, żeby zobaczyć odliczanie, godziny w Twojej strefie czasowej
+- **Powiadomienia Windows** — toast notification na start/koniec peak
+- **Animacja** — pulsowanie ikony przy zmianie statusu
+- **Autostart** — opcjonalne uruchamianie przy starcie Windows
+- **Lokalizacja** — polski i angielski, automatycznie z języka systemu
+- **Lekka** — zero API calls, czysta logika zegarowa, odświeżanie co 30s
+- **Styl Windows 11** — popup z motywem Sun Valley (Fluent Design)
 
 ### Instalacja
 
-```bash
-curl -sL https://raw.githubusercontent.com/studiogo/claude-peak-hours/main/install.sh | bash
-```
+**Pobierz gotowy `.exe`:**
 
-### Odinstalowanie
-
-```bash
-rm -rf "/Applications/Claude Peak Hours.app"
-```
-
-### Alternatywne metody instalacji
-
-**Pobierz ręcznie:**
-1. Wejdź w [Releases](https://github.com/studiogo/claude-peak-hours/releases)
-2. Pobierz `Claude-Peak-Hours-v*.zip`
-3. Rozpakuj i przenieś `Claude Peak Hours.app` do `/Applications`
+1. Wejdź w [Releases](https://github.com/Vallhalen/claude-peak-hours-windows/releases)
+2. Pobierz `Claude.Peak.Hours.exe`
+3. Uruchom — ikona pojawi się w system tray
 
 **Zbuduj ze źródeł:**
-```bash
-git clone https://github.com/studiogo/claude-peak-hours.git
-cd claude-peak-hours
-./build.sh
-cp -r "build/Claude Peak Hours.app" /Applications/
-```
-
----
-
-## 2. Status Line dla Claude Code
-
-<img src="docs/screenshots/claude-code-statusline.png" alt="Claude Code Status Line - Peak Hours" width="600">
-
-Status peak/off-peak z odliczaniem w terminalu Claude Code. Działa na **macOS, Linux i Windows**.
-
-```
-... │ 🟢 OK 6h 34m
-... │ 🔴 PEAK 2h 15m
-```
-
-### Funkcje
-- **🟢 OK 6h 34m** — off-peak, odliczanie do następnego peak
-- **🔴 PEAK 2h 15m** — godziny ograniczeń, odliczanie do końca
-
-### Wymagania
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
-- **macOS / Linux**: `jq` (`brew install jq` / `sudo apt install jq`)
-- **Windows**: PowerShell 5.1+ (wbudowany)
-
-### Instalacja — macOS / Linux
 
 ```bash
-curl -sL https://raw.githubusercontent.com/studiogo/claude-peak-hours/main/statusline-install.sh | bash
+git clone https://github.com/Vallhalen/claude-peak-hours-windows.git
+cd claude-peak-hours-windows
+pip install -r requirements.txt
+python src/main.pyw
 ```
 
-### Instalacja — Windows (PowerShell)
-
-```powershell
-irm https://raw.githubusercontent.com/studiogo/claude-peak-hours/main/statusline-install.ps1 | iex
-```
-
-Instalator:
-1. Pobiera helper peak-hours do `~/.claude/`
-2. Dodaje segment peak hours do Twojego istniejącego statusline (nie nadpisuje go)
-3. Konfiguruje `settings.json` jeśli trzeba
-
-### Odinstalowanie — macOS / Linux
+**Zbuduj `.exe`:**
 
 ```bash
-curl -sL https://raw.githubusercontent.com/studiogo/claude-peak-hours/main/statusline-uninstall.sh | bash
+pip install -r requirements.txt
+python -m PyInstaller --onefile --windowed --name "Claude Peak Hours" --icon assets/icon.ico --paths src src/main.pyw
+# Wynik: dist/Claude Peak Hours.exe
 ```
 
-### Odinstalowanie — Windows (PowerShell)
+### Wymagania (ze źródeł)
 
-```powershell
-irm https://raw.githubusercontent.com/studiogo/claude-peak-hours/main/statusline-uninstall.ps1 | iex
-```
-
-Uninstalator usuwa **tylko** segment peak hours — reszta Twojego statusline zostaje nienaruszona.
-
----
+- Python 3.11+
+- `pip install -r requirements.txt`
 
 ## Harmonogram Peak Hours
 
@@ -115,18 +56,33 @@ Na podstawie [ogłoszenia Anthropic](https://support.anthropic.com/en/articles/9
 | | Peak | Off-Peak |
 |---|---|---|
 | **Kiedy** | Dni robocze 5:00–11:00 PT | Wieczory, noce, weekendy |
-| **PT** | 5:00–11:00 | Reszta czasu |
 | **CET** | 14:00–20:00 | Reszta czasu |
-| **Efekt** | Szybsze zużywanie limitów sesji | Normalne limity sesji |
-
-Oba narzędzia automatycznie przeliczają na Twoją strefę czasową.
+| **Efekt** | Szybsze zużywanie limitów | Normalne limity |
 
 ## Jak to działa
 
-Zero zapytań do API, zero ruchu sieciowego. Oba narzędzia sprawdzają aktualny czas względem znanego harmonogramu peak hours (dni robocze 5–11 rano czasu pacyficznego).
+Zero zapytań do API, zero ruchu sieciowego. Appka sprawdza aktualny czas względem znanego harmonogramu peak hours (dni robocze 5–11 rano czasu pacyficznego) i przelicza na Twoją strefę czasową.
 
-- **Aplikacja menu bar** — odświeża co 30 sekund
-- **Status line** — odświeża po każdej odpowiedzi Claude Code
+## Widget Windows 11
+
+> **Status: nie działa** — Microsoft przebudował Widget Board w Windows 11 25H2 (build 26100+) na architekturę opartą o Copilot. Sideloadowane widgety MSIX nie są już wykrywane przez nowy panel. Natywny widget provider (C# + Windows App SDK) jest w katalogu `widget-native/`, ale wymaga publikacji w Microsoft Store żeby pojawić się w panelu widgetów.
+
+Jako alternatywa, aplikacja jest dostępna również jako PWA — otwórz [stronę](https://vallhalen.github.io/claude-peak-hours-windows/) w Edge i zainstaluj jako aplikację.
+
+## Struktura projektu
+
+```
+├── src/                    # Aplikacja tray (Python)
+│   ├── main.pyw            # Entry point
+│   ├── tray_app.py         # System tray + popup (Win32 + tkinter + sv-ttk)
+│   ├── peak_hours_manager.py  # Logika peak/off-peak
+│   └── strings.py          # Lokalizacja PL/EN
+├── widget-native/          # Natywny widget Win11 (C# — nie działa na 25H2+)
+├── index.html              # PWA strona
+├── sw.js                   # Service Worker
+├── peak-hours.js           # Logika JS (shared)
+└── manifest.json           # PWA manifest
+```
 
 ## Licencja
 

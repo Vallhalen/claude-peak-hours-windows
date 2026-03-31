@@ -168,13 +168,28 @@ def _get_autostart() -> bool:
         return False
 
 
+def _get_launch_command() -> str:
+    """Return the command to launch this app at login."""
+    if getattr(sys, "frozen", False):
+        # PyInstaller .exe
+        return f'"{sys.executable}"'
+    else:
+        # Running as .pyw script — use pythonw.exe (no console)
+        pythonw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
+        if not os.path.exists(pythonw):
+            pythonw = sys.executable
+        script = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "main.pyw")
+        )
+        return f'"{pythonw}" "{script}"'
+
+
 def _set_autostart(enabled: bool) -> None:
     try:
         import winreg
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, _REG_KEY, 0, winreg.KEY_SET_VALUE)
         if enabled:
-            exe = sys.executable
-            winreg.SetValueEx(key, _APP_NAME, 0, winreg.REG_SZ, f'"{exe}"')
+            winreg.SetValueEx(key, _APP_NAME, 0, winreg.REG_SZ, _get_launch_command())
         else:
             try:
                 winreg.DeleteValue(key, _APP_NAME)
@@ -516,7 +531,36 @@ class TrayApp:
 
     def _on_state_change(self, state: PeakState):
         tooltip = f"{state.status_bar_text} - {state.countdown_text}"
-        self.tray.update(state.status, tooltip)
+
+        # Flash the icon on peak/off-peak transition
+        if (hasattr(self, '_last_status') and
+                self._last_status != state.status and
+                state.status != PeakStatus.WARNING):
+            self._flash_icon(state.status)
+        else:
+            self.tray.update(state.status, tooltip)
+        self._last_status = state.status
+
+    def _flash_icon(self, new_status: PeakStatus, count: int = 6):
+        """Blink tray icon between blank and new color."""
+        if count <= 0:
+            tooltip = f"{self.manager.state.status_bar_text} - {self.manager.state.countdown_text}"
+            self.tray.update(new_status, tooltip)
+            return
+
+        if count % 2 == 0:
+            # Show blank (transparent) icon
+            blank = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(blank)
+            draw.ellipse([2, 2, 30, 30], fill=(128, 128, 128, 80))
+            hicon = _pil_to_hicon(blank)
+            if self.tray._nid:
+                self.tray._nid.hIcon = hicon
+                shell32.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(self.tray._nid))
+        else:
+            self.tray.update(new_status, "")
+
+        self.root.after(300, lambda: self._flash_icon(new_status, count - 1))
 
     def _send_notification(self, title: str, body: str):
         try:
