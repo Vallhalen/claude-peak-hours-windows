@@ -1,3 +1,11 @@
+__pycache__/
+*.pyc
+dist/
 build/
+*.spec
+*.egg-info/
+.venv/
+venv/
+temp-analysis/
 .DS_Store
 *.swp

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Peak Hours</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+    <link rel="apple-touch-icon" href="icons/icon-512.png">
+    <meta name="theme-color" content="#0a0a0f">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            background: #1a1a24;
+            border: 1px solid #2a2a36;
+            border-radius: 16px;
+            padding: 32px;
+            width: 340px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .dot.off-peak { background: #00b450; box-shadow: 0 0 12px rgba(0,180,80,0.4); }
+        .dot.peak { background: #dc3232; box-shadow: 0 0 12px rgba(220,50,50,0.4); }
+        .dot.warning { background: #f0b400; box-shadow: 0 0 12px rgba(240,180,0,0.4); }
+
+        .status-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .status-title.off-peak { color: #00b450; }
+        .status-title.peak { color: #dc3232; }
+        .status-title.warning { color: #f0b400; }
+
+        .description {
+            color: #8888a0;
+            font-size: 13px;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .divider {
+            height: 1px;
+            background: #2a2a36;
+            margin: 16px 0;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+        }
+
+        .info-row .icon {
+            width: 28px;
+            font-size: 15px;
+            flex-shrink: 0;
+            opacity: 0.6;
+        }
+
+        .info-row .label {
+            color: #8888a0;
+            font-size: 13px;
+            flex: 1;
+        }
+
+        .info-row .value {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e0e0e6;
+        }
+
+        .install-hint {
+            margin-top: 32px;
+            text-align: center;
+            font-size: 12px;
+            color: #5555660;
+            max-width: 340px;
+            line-height: 1.6;
+        }
+
+        .install-hint a {
+            color: #6090ff;
+            text-decoration: none;
+        }
+
+        .install-hint strong {
+            color: #8888a0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="header">
+        <div class="dot" id="dot"></div>
+        <div class="status-title" id="title">---</div>
+    </div>
+    <div class="description" id="desc">Ładowanie...</div>
+
+    <div class="divider"></div>
+
+    <div class="info-row">
+        <span class="icon">⏱</span>
+        <span class="label" id="next-label">---</span>
+        <span class="value" id="countdown">---</span>
+    </div>
+    <div class="info-row">
+        <span class="icon">🕐</span>
+        <span class="label">Peak hours</span>
+        <span class="value" id="peak-hours">---</span>
+    </div>
+    <div class="info-row">
+        <span class="icon">📅</span>
+        <span class="label" id="workdays-label">Dni robocze</span>
+        <span class="value" id="workdays-value">Pon–Pt</span>
+    </div>
+</div>
+
+<div class="install-hint">
+    <strong>Widget Windows 11:</strong> Otwórz w Edge → ⋯ → Aplikacje → Zainstaluj tę witrynę jako aplikację<br>
+    Następnie dodaj widget w panelu widgetów (Win + W)
+</div>
+
+<script src="peak-hours.js"></script>
+<script>
+    function updateUI() {
+        const state = getPeakState();
+        const isPolish = navigator.language.startsWith('pl');
+
+        const dot = document.getElementById('dot');
+        const title = document.getElementById('title');
+        const desc = document.getElementById('desc');
+        const nextLabel = document.getElementById('next-label');
+        const countdown = document.getElementById('countdown');
+        const peakHours = document.getElementById('peak-hours');
+
+        // Status class
+        const cls = state.status; // 'off-peak', 'peak', 'warning'
+        dot.className = 'dot ' + cls;
+        title.className = 'status-title ' + cls;
+
+        if (isPolish) {
+            title.textContent = state.isPeak ? 'ZWIĘKSZONE ZUŻYCIE' : 'PEŁNA MOC';
+            desc.textContent = state.isPeak
+                ? 'Twoje limity zużywają się szybciej niż zwykle'
+                : 'Claude działa na full — korzystaj!';
+            nextLabel.textContent = state.isPeak ? 'Pełna moc za' : 'Zwiększone zużycie za';
+            document.getElementById('workdays-label').textContent = 'Dni robocze';
+            document.getElementById('workdays-value').textContent = 'Pon–Pt';
+        } else {
+            title.textContent = state.isPeak ? 'HIGHER USAGE' : 'FULL POWER';
+            desc.textContent = state.isPeak
+                ? 'Your limits are being consumed faster than usual'
+                : 'Claude running at full capacity — go ahead!';
+            nextLabel.textContent = state.isPeak ? 'Full power in' : 'Higher usage in';
+            document.getElementById('workdays-label').textContent = 'Workdays';
+            document.getElementById('workdays-value').textContent = 'Mon–Fri';
+        }
+
+        countdown.textContent = state.countdownText;
+        peakHours.textContent = state.peakHoursLocal;
+    }
+
+    updateUI();
+    setInterval(updateUI, 30000);
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js');
+    }
+</script>
+
+</body>
+</html>

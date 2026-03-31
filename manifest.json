@@ -1,0 +1,42 @@
+{
+    "name": "Claude Peak Hours",
+    "short_name": "Peak Hours",
+    "description": "Wskaźnik peak/off-peak godzin Claude AI. Wiedz, kiedy korzystać na full.",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#0a0a0f",
+    "theme_color": "#0a0a0f",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ],
+    "widgets": [
+        {
+            "name": "Claude Peak Hours",
+            "short_name": "Peak Hours",
+            "description": "Status peak/off-peak godzin Claude AI",
+            "tag": "peak-status",
+            "ms_ac_template": "widget/template.json",
+            "data": "widget/data",
+            "type": "application/json",
+            "screenshots": [],
+            "icons": [
+                {
+                    "src": "icons/icon-192.png",
+                    "sizes": "192x192"
+                }
+            ],
+            "auth": false,
+            "update": 900
+        }
+    ]
+}
