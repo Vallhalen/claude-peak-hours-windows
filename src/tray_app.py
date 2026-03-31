@@ -384,13 +384,22 @@ class PopupWindow:
         """Show warning label under the autostart toggle."""
         if self._warn_label:
             return
-        self._warn_label = ttk.Label(
+        self._warn_label = tk.Label(
             self._frame, text=AUTOSTART_WARN,
             font=("Segoe UI", 8),
-            foreground="#c44",
-            wraplength=260,
+            fg="red", bg="#fafafa",
+            wraplength=260, justify="left",
         )
-        self._warn_label.pack(anchor="w", pady=(2, 0))
+        self._warn_label.pack(anchor="w", pady=(4, 0))
+
+        # Resize the overrideredirect window to fit new content
+        if self._win:
+            self._win.update_idletasks()
+            w = self._win.winfo_reqwidth()
+            h = self._win.winfo_reqheight()
+            x = self._win.winfo_x()
+            y = self._win.winfo_y() - (h - self._win.winfo_height())
+            self._win.geometry(f"{w}x{h}+{x}+{y}")
 
     def _on_notifications(self):
         self.manager.notifications_enabled = self._notif_var.get()
