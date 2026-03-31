@@ -53,7 +53,7 @@ function getPeakState() {
     secsUntilChange = Math.max(0, secsUntilChange);
 
     let status;
-    if (secsUntilChange <= WARNING_SECONDS) {
+    if (secsUntilChange <= WARNING_SECONDS && nextIsPeak) {
         status = 'warning';
     } else if (isPeak) {
         status = 'peak';
@@ -61,16 +61,12 @@ function getPeakState() {
         status = 'off-peak';
     }
 
-    // Local peak hours string
-    const today = new Date();
-    const startUTC = new Date(today.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) + 'T05:00:00-08:00');
-    const endUTC = new Date(today.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) + 'T11:00:00-08:00');
-
-    // Recalculate properly using PT offset
+    // Local peak hours string — build PT times then convert to local via offset
+    const ptDateStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
     const ptNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-    const ptOffset = now.getTime() - ptNow.getTime();
-    const localStart = new Date(new Date(today.getFullYear(), today.getMonth(), today.getDate(), PEAK_START_HOUR, 0, 0).getTime() + ptOffset);
-    const localEnd = new Date(new Date(today.getFullYear(), today.getMonth(), today.getDate(), PEAK_END_HOUR, 0, 0).getTime() + ptOffset);
+    const ptOffsetMs = now.getTime() - ptNow.getTime();
+    const localStart = new Date(new Date(`${ptDateStr}T${String(PEAK_START_HOUR).padStart(2,'0')}:00:00`).getTime() + ptOffsetMs);
+    const localEnd = new Date(new Date(`${ptDateStr}T${String(PEAK_END_HOUR).padStart(2,'0')}:00:00`).getTime() + ptOffsetMs);
 
     const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
     const tzAbbr = Intl.DateTimeFormat([], { timeZoneName: 'short' }).formatToParts(now)

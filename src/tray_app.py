@@ -10,12 +10,15 @@ from __future__ import annotations
 
 import sys
 import os
+import queue
 import threading
+import tempfile
 import ctypes
 import ctypes.wintypes as wt
 import tkinter as tk
 from tkinter import ttk
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageTk
+import sv_ttk
 
 from peak_hours_manager import PeakHoursManager, PeakStatus, PeakState
 from strings import (
@@ -41,7 +44,6 @@ NIM_ADD = 0x00000000
 NIM_MODIFY = 0x00000001
 NIM_DELETE = 0x00000002
 
-IDI_APPLICATION = 32512
 IMAGE_ICON = 1
 LR_LOADFROMFILE = 0x0010
 LR_DEFAULTSIZE = 0x0040
@@ -55,15 +57,14 @@ kernel32 = ctypes.windll.kernel32
 # Set proper argtypes/restypes for 64-bit Windows
 user32.DefWindowProcW.argtypes = [wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM]
 user32.DefWindowProcW.restype = ctypes.c_long
-
 user32.PostMessageW.argtypes = [wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM]
 user32.PostQuitMessage.argtypes = [ctypes.c_int]
-
 user32.LoadImageW.argtypes = [
     wt.HINSTANCE, wt.LPCWSTR, wt.UINT, ctypes.c_int, ctypes.c_int, wt.UINT
 ]
 user32.LoadImageW.restype = wt.HANDLE
-
+user32.DestroyIcon.argtypes = [wt.HICON]
+user32.DestroyIcon.restype = wt.BOOL
 kernel32.GetModuleHandleW.argtypes = [wt.LPCWSTR]
 kernel32.GetModuleHandleW.restype = wt.HINSTANCE
 
@@ -110,15 +111,7 @@ HEX_ACCENT = {
     PeakStatus.WARNING: "#e0a000",
 }
 
-BG = "#f5f5f7"
-BG_CARD = "#ffffff"
-FG_PRIMARY = "#1d1d1f"
 FG_SECONDARY = "#6e6e73"
-FG_ICON = "#8e8e93"
-SEPARATOR = "#e5e5ea"
-TOGGLE_ON = "#34c759"
-TOGGLE_OFF = "#c7c7cc"
-TOGGLE_KNOB = "#ffffff"
 
 
 # ---------------------------------------------------------------------------
@@ -126,15 +119,21 @@ TOGGLE_KNOB = "#ffffff"
 # ---------------------------------------------------------------------------
 
 def _pil_to_hicon(pil_image: Image.Image) -> int:
-    """Convert a PIL Image to a win32 HICON via a temp .ico file."""
-    import tempfile
-    tmp = os.path.join(tempfile.gettempdir(), "_claude_peak_tray.ico")
-    pil_image.save(tmp, format="ICO", sizes=[(32, 32)])
-    hicon = user32.LoadImageW(
-        None, tmp, IMAGE_ICON, 32, 32,
-        LR_LOADFROMFILE | LR_DEFAULTSIZE
-    )
-    return hicon
+    """Convert a PIL Image to a win32 HICON via a unique temp .ico file."""
+    fd, tmp = tempfile.mkstemp(suffix=".ico", prefix="_claude_peak_")
+    os.close(fd)
+    try:
+        pil_image.save(tmp, format="ICO", sizes=[(32, 32)])
+        hicon = user32.LoadImageW(
+            None, tmp, IMAGE_ICON, 32, 32,
+            LR_LOADFROMFILE | LR_DEFAULTSIZE
+        )
+        return hicon
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
 
 
 def _make_circle_image(status: PeakStatus) -> Image.Image:
@@ -171,10 +170,8 @@ def _get_autostart() -> bool:
 def _get_launch_command() -> str:
     """Return the command to launch this app at login."""
     if getattr(sys, "frozen", False):
-        # PyInstaller .exe
         return f'"{sys.executable}"'
     else:
-        # Running as .pyw script — use pythonw.exe (no console)
         pythonw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
         if not os.path.exists(pythonw):
             pythonw = sys.executable
@@ -188,33 +185,33 @@ def _set_autostart(enabled: bool) -> None:
     try:
         import winreg
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, _REG_KEY, 0, winreg.KEY_SET_VALUE)
-        if enabled:
-            winreg.SetValueEx(key, _APP_NAME, 0, winreg.REG_SZ, _get_launch_command())
-        else:
-            try:
-                winreg.DeleteValue(key, _APP_NAME)
-            except FileNotFoundError:
-                pass
-        winreg.CloseKey(key)
+        try:
+            if enabled:
+                winreg.SetValueEx(key, _APP_NAME, 0, winreg.REG_SZ, _get_launch_command())
+            else:
+                try:
+                    winreg.DeleteValue(key, _APP_NAME)
+                except FileNotFoundError:
+                    pass
+        finally:
+            winreg.CloseKey(key)
     except Exception:
         pass
 
 
 # ---------------------------------------------------------------------------
-# Toggle Switch widget
-# ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
-# Popup Window — native Windows look via ttk
+# Popup Window — Windows 11 style via sv-ttk
 # ---------------------------------------------------------------------------
 
 class PopupWindow:
 
-    def __init__(self, root: tk.Tk, manager: PeakHoursManager):
+    def __init__(self, root: tk.Tk, manager: PeakHoursManager,
+                 on_quit: callable):
         self.root = root
         self.manager = manager
+        self._on_quit_callback = on_quit
         self._win: tk.Toplevel | None = None
-        self._refs: list = []  # prevent GC of PhotoImages
+        self._refs: list = []
 
     @property
     def visible(self) -> bool:
@@ -232,7 +229,6 @@ class PopupWindow:
         self._refs.clear()
 
         self.manager.update()
-        self.manager._compute_local_peak_hours()
 
         if self._win:
             self._win.destroy()
@@ -242,14 +238,9 @@ class PopupWindow:
         win.attributes("-topmost", True)
         self._win = win
 
-        # Windows 11 Fluent Design theme
-        import sv_ttk
-        sv_ttk.set_theme("light")
-
         state = self.manager.state
         accent = HEX_ACCENT[state.status]
 
-        # Main frame with system background
         frame = ttk.Frame(win, padding=16)
         frame.pack(fill="both", expand=True)
 
@@ -257,7 +248,6 @@ class PopupWindow:
         hdr = ttk.Frame(frame)
         hdr.pack(anchor="w", fill="x")
 
-        from PIL import ImageTk
         dot_size = 14
         ss = 4
         dot_img = Image.new("RGBA", (dot_size * ss, dot_size * ss), (0, 0, 0, 0))
@@ -272,10 +262,9 @@ class PopupWindow:
         ttk.Label(hdr, image=dot_photo).pack(side="left", padx=(0, 8))
 
         header_text = RESTRICTED_HEADER if state.is_peak else FULL_POWER_HEADER
-        lbl_hdr = ttk.Label(hdr, text=header_text,
-                            font=("Segoe UI", 13, "bold"),
-                            foreground=accent)
-        lbl_hdr.pack(side="left")
+        ttk.Label(hdr, text=header_text,
+                  font=("Segoe UI", 13, "bold"),
+                  foreground=accent).pack(side="left")
 
         # --- Description ---
         desc = RESTRICTED_DESC if state.is_peak else FULL_POWER_DESC
@@ -294,7 +283,7 @@ class PopupWindow:
 
         ttk.Separator(frame, orient="horizontal").pack(fill="x", pady=(10, 8))
 
-        # --- Native checkboxes ---
+        # --- Native toggle switches ---
         self._autostart_var = tk.BooleanVar(value=_get_autostart())
         self._notif_var = tk.BooleanVar(value=self.manager.notifications_enabled)
 
@@ -310,7 +299,6 @@ class PopupWindow:
 
         ttk.Separator(frame, orient="horizontal").pack(fill="x", pady=(8, 4))
 
-        # --- Quit button (native) ---
         ttk.Button(frame, text=QUIT, command=self._quit,
                    width=8).pack(anchor="w", pady=(4, 0))
 
@@ -330,7 +318,6 @@ class PopupWindow:
             y = cy + 10
         win.geometry(f"{w}x{h}+{x}+{y}")
 
-        # Close on focus loss
         win.bind("<FocusOut>", self._on_focus_out)
         win.after(100, lambda: win.focus_force())
 
@@ -372,7 +359,7 @@ class PopupWindow:
 
     def _quit(self):
         self.close()
-        os._exit(0)
+        self._on_quit_callback()
 
 
 # ---------------------------------------------------------------------------
@@ -382,12 +369,12 @@ class PopupWindow:
 class Win32TrayIcon:
     """Manages a native tray icon using Shell_NotifyIconW."""
 
-    def __init__(self, on_click: callable, on_quit: callable):
+    def __init__(self, on_click: callable):
         self._on_click = on_click
-        self._on_quit = on_quit
         self._hwnd = None
         self._nid = None
         self._hicon = None
+        self._wndproc_ref = None  # prevent GC of ctypes callback
         self._thread: threading.Thread | None = None
 
     def start(self, status: PeakStatus, tooltip: str):
@@ -399,25 +386,26 @@ class Win32TrayIcon:
         if not self._hwnd or not self._nid:
             return
         new_hicon = _pil_to_hicon(_make_circle_image(status))
+        old_hicon = self._hicon
         self._nid.hIcon = new_hicon
         self._nid.szTip = tooltip[:127]
         shell32.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(self._nid))
-        if self._hicon:
-            user32.DestroyIcon(self._hicon)
+        if old_hicon:
+            user32.DestroyIcon(old_hicon)
         self._hicon = new_hicon
 
     def _run(self, status: PeakStatus, tooltip: str):
-        # Register window class
-        kernel32.GetModuleHandleW.restype = wt.HINSTANCE
         hinst = kernel32.GetModuleHandleW(None)
 
+        # Store reference to prevent GC
+        self._wndproc_ref = WNDPROC(self._wndproc)
+
         wc = WNDCLASS()
-        wc.lpfnWndProc = WNDPROC(self._wndproc)
+        wc.lpfnWndProc = self._wndproc_ref
         wc.hInstance = hinst
         wc.lpszClassName = "ClaudePeakHoursTray"
-        class_atom = user32.RegisterClassW(ctypes.byref(wc))
+        user32.RegisterClassW(ctypes.byref(wc))
 
-        # Create hidden message-only window
         user32.CreateWindowExW.restype = wt.HWND
         user32.CreateWindowExW.argtypes = [
             wt.DWORD, wt.LPCWSTR, wt.LPCWSTR, wt.DWORD,
@@ -429,7 +417,6 @@ class Win32TrayIcon:
             0, 0, 0, 0, None, None, hinst, None
         )
 
-        # Create tray icon
         self._hicon = _pil_to_hicon(_make_circle_image(status))
 
         nid = NOTIFYICONDATA()
@@ -444,7 +431,6 @@ class Win32TrayIcon:
 
         shell32.Shell_NotifyIconW(NIM_ADD, ctypes.byref(nid))
 
-        # Message loop
         msg = wt.MSG()
         while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
             user32.TranslateMessage(ctypes.byref(msg))
@@ -452,15 +438,15 @@ class Win32TrayIcon:
 
     def _wndproc(self, hwnd, msg, wparam, lparam):
         if msg == WM_TRAYICON:
-            if lparam == WM_LBUTTONUP:
-                self._on_click()
-                return 0
-            elif lparam == WM_RBUTTONUP:
+            if lparam in (WM_LBUTTONUP, WM_RBUTTONUP):
                 self._on_click()
                 return 0
         elif msg == WM_DESTROY:
             if self._nid:
                 shell32.Shell_NotifyIconW(NIM_DELETE, ctypes.byref(self._nid))
+            if self._hicon:
+                user32.DestroyIcon(self._hicon)
+                self._hicon = None
             user32.PostQuitMessage(0)
             return 0
         return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
@@ -482,24 +468,24 @@ class TrayApp:
         self.root.withdraw()
         self.root.title("Claude Peak Hours")
 
-        # Fix DPI scaling for tkinter — get actual monitor DPI
-        try:
-            dpi = ctypes.windll.user32.GetDpiForSystem()
-            scale = dpi / 96.0
-            self.root.tk.call('tk', 'scaling', scale * 1.333)  # tk uses 72dpi base
-        except Exception:
-            pass
+        # Apply Windows 11 theme once at startup
+        sv_ttk.set_theme("light")
 
-        self.popup = PopupWindow(self.root, self.manager)
-        self._pending_toggle = False
+        # Thread-safe click queue (Win32 thread -> tkinter main thread)
+        self._click_queue: queue.Queue[tuple[int, int]] = queue.Queue()
 
-        self.tray = Win32TrayIcon(
-            on_click=self._on_tray_click,
-            on_quit=self._on_quit,
+        self.popup = PopupWindow(self.root, self.manager,
+                                 on_quit=self._shutdown)
+
+        self.tray = Win32TrayIcon(on_click=self._on_tray_click)
+
+        # Route state changes to main thread
+        self.manager.set_on_change(
+            lambda state: self.root.after(0, self._handle_state_change, state)
         )
-
-        self.manager.set_on_change(self._on_state_change)
         self.manager.set_on_notify(self._send_notification)
+
+        self._last_status: PeakStatus | None = None
 
     def run(self):
         state = self.manager.state
@@ -508,32 +494,27 @@ class TrayApp:
         self.tray.start(state.status, tooltip)
         self.manager.start()
 
-        # Poll for tray click events (thread-safe bridge)
         self._poll()
         self.root.mainloop()
 
     def _poll(self):
-        if self._pending_toggle:
-            self._pending_toggle = False
-            self.popup.toggle(
-                getattr(self, '_click_x', 0),
-                getattr(self, '_click_y', 0),
-            )
+        try:
+            x, y = self._click_queue.get_nowait()
+            self.popup.toggle(x, y)
+        except queue.Empty:
+            pass
         self.root.after(50, self._poll)
 
     def _on_tray_click(self):
-        # Capture cursor position NOW (while over the tray icon)
         pt = wt.POINT()
         user32.GetCursorPos(ctypes.byref(pt))
-        self._click_x = pt.x
-        self._click_y = pt.y
-        self._pending_toggle = True
+        self._click_queue.put((pt.x, pt.y))
 
-    def _on_state_change(self, state: PeakState):
+    def _handle_state_change(self, state: PeakState):
+        """Handle state change on main thread."""
         tooltip = f"{state.status_bar_text} - {state.countdown_text}"
 
-        # Flash the icon on peak/off-peak transition
-        if (hasattr(self, '_last_status') and
+        if (self._last_status is not None and
                 self._last_status != state.status and
                 state.status != PeakStatus.WARNING):
             self._flash_icon(state.status)
@@ -542,21 +523,24 @@ class TrayApp:
         self._last_status = state.status
 
     def _flash_icon(self, new_status: PeakStatus, count: int = 6):
-        """Blink tray icon between blank and new color."""
+        """Blink tray icon between dim and new color."""
         if count <= 0:
             tooltip = f"{self.manager.state.status_bar_text} - {self.manager.state.countdown_text}"
             self.tray.update(new_status, tooltip)
             return
 
         if count % 2 == 0:
-            # Show blank (transparent) icon
             blank = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
             draw = ImageDraw.Draw(blank)
             draw.ellipse([2, 2, 30, 30], fill=(128, 128, 128, 80))
             hicon = _pil_to_hicon(blank)
             if self.tray._nid:
+                old = self.tray._nid.hIcon
                 self.tray._nid.hIcon = hicon
                 shell32.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(self.tray._nid))
+                if old:
+                    user32.DestroyIcon(old)
+                self.tray._hicon = hicon
         else:
             self.tray.update(new_status, "")
 
@@ -575,7 +559,11 @@ class TrayApp:
         except Exception:
             pass
 
-    def _on_quit(self):
+    def _shutdown(self):
+        """Clean shutdown — remove tray icon, stop timers, exit."""
         self.manager.stop()
         self.tray.stop()
-        self.root.after(0, self.root.destroy)
+        self.root.after(100, self.root.destroy)
+
+    def _on_quit(self):
+        self._shutdown()

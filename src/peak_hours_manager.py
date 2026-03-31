@@ -52,7 +52,7 @@ class PeakHoursManager:
         self.notifications_enabled = True
 
         self.update()
-        self._compute_local_peak_hours()
+        self.compute_local_peak_hours()
 
     # -- public API ----------------------------------------------------------
 
@@ -106,11 +106,14 @@ class PeakHoursManager:
 
         secs = max(0, secs)
 
-        # Determine status with warning zone
-        if secs <= WARNING_SECONDS:
+        # Determine status — warning only when approaching peak (not leaving it)
+        next_is_peak = not is_peak
+        if secs <= WARNING_SECONDS and next_is_peak:
             status = PeakStatus.WARNING
         else:
             status = PeakStatus.PEAK if is_peak else PeakStatus.OFF_PEAK
+
+        self.compute_local_peak_hours()
 
         # Build state
         self.state = PeakState(
@@ -159,7 +162,7 @@ class PeakHoursManager:
 
     # -- helpers -------------------------------------------------------------
 
-    def _compute_local_peak_hours(self) -> None:
+    def compute_local_peak_hours(self) -> None:
         now = datetime.now(timezone.utc)
         today_pt = now.astimezone(PT).date()
 

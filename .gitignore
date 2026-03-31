@@ -9,3 +9,7 @@ venv/
 temp-analysis/
 .DS_Store
 *.swp
+widget-native/bin/
+widget-native/obj/
+widget-native/*.msix
+*.sln

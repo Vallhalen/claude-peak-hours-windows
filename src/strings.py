@@ -5,7 +5,7 @@ import locale
 
 def _is_polish() -> bool:
     try:
-        lang = locale.getdefaultlocale()[0] or ""
+        lang = locale.getlocale()[0] or ""
     except Exception:
         lang = ""
     return lang.startswith("pl")
