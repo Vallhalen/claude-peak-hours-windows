@@ -3,17 +3,23 @@
 from __future__ import annotations
 
 import threading
-from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from enum import Enum, auto
-from zoneinfo import ZoneInfo
 from typing import Callable
+from zoneinfo import ZoneInfo
 
 from strings import (
-    FULL_POWER, RESTRICTED, RESTRICTIONS_IN, FULL_POWER_IN,
-    NOTIF_RESTRICTED_TITLE, NOTIF_RESTRICTED_BODY,
-    NOTIF_FULL_POWER_TITLE, NOTIF_FULL_POWER_BODY,
-    notif_full_power_soon, notif_restricted_soon,
+    FULL_POWER,
+    FULL_POWER_IN,
+    NOTIF_FULL_POWER_BODY,
+    NOTIF_FULL_POWER_TITLE,
+    NOTIF_RESTRICTED_BODY,
+    NOTIF_RESTRICTED_TITLE,
+    RESTRICTED,
+    RESTRICTIONS_IN,
+    notif_full_power_soon,
+    notif_restricted_soon,
 )
 
 PT = ZoneInfo("America/Los_Angeles")

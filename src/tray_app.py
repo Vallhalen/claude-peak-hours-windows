@@ -8,24 +8,31 @@ via a hidden win32 window running in a background thread.
 
 from __future__ import annotations
 
-import sys
-import os
-import queue
-import threading
-import tempfile
 import ctypes
 import ctypes.wintypes as wt
+import os
+import queue
+import sys
+import tempfile
+import threading
 import tkinter as tk
 from tkinter import ttk
-from PIL import Image, ImageDraw, ImageTk
-import sv_ttk
 
-from peak_hours_manager import PeakHoursManager, PeakStatus, PeakState
+import sv_ttk
+from PIL import Image, ImageDraw, ImageTk
+
+from peak_hours_manager import PeakHoursManager, PeakState, PeakStatus
 from strings import (
-    FULL_POWER_HEADER, RESTRICTED_HEADER,
-    FULL_POWER_DESC, RESTRICTED_DESC,
-    RESTRICTION_HOURS, WORKDAYS, WORKDAYS_VALUE,
-    LAUNCH_AT_LOGIN, NOTIFICATIONS, QUIT,
+    FULL_POWER_DESC,
+    FULL_POWER_HEADER,
+    LAUNCH_AT_LOGIN,
+    NOTIFICATIONS,
+    QUIT,
+    RESTRICTED_DESC,
+    RESTRICTED_HEADER,
+    RESTRICTION_HOURS,
+    WORKDAYS,
+    WORKDAYS_VALUE,
 )
 
 # ---------------------------------------------------------------------------
@@ -184,10 +191,13 @@ def _get_launch_command() -> str:
 def _set_autostart(enabled: bool) -> None:
     try:
         import winreg
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, _REG_KEY, 0, winreg.KEY_SET_VALUE)
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER, _REG_KEY, 0, winreg.KEY_SET_VALUE
+        )
         try:
             if enabled:
-                winreg.SetValueEx(key, _APP_NAME, 0, winreg.REG_SZ, _get_launch_command())
+                cmd = _get_launch_command()
+                winreg.SetValueEx(key, _APP_NAME, 0, winreg.REG_SZ, cmd)
             else:
                 try:
                     winreg.DeleteValue(key, _APP_NAME)
@@ -236,6 +246,7 @@ class PopupWindow:
         win = tk.Toplevel(self.root)
         win.overrideredirect(True)
         win.attributes("-topmost", True)
+        win.configure(bg="#fafafa")
         self._win = win
 
         state = self.manager.state
@@ -470,6 +481,11 @@ class TrayApp:
 
         # Apply Windows 11 theme once at startup
         sv_ttk.set_theme("light")
+        style = ttk.Style()
+        style.configure("Switch.TCheckbutton", background="#fafafa")
+        style.configure("TFrame", background="#fafafa")
+        style.configure("TLabel", background="#fafafa")
+        style.configure("TButton", background="#fafafa")
 
         # Thread-safe click queue (Win32 thread -> tkinter main thread)
         self._click_queue: queue.Queue[tuple[int, int]] = queue.Queue()
@@ -525,7 +541,8 @@ class TrayApp:
     def _flash_icon(self, new_status: PeakStatus, count: int = 6):
         """Blink tray icon between dim and new color."""
         if count <= 0:
-            tooltip = f"{self.manager.state.status_bar_text} - {self.manager.state.countdown_text}"
+            s = self.manager.state
+            tooltip = f"{s.status_bar_text} - {s.countdown_text}"
             self.tray.update(new_status, tooltip)
             return
 

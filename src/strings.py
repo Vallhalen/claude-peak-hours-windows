@@ -5,10 +5,10 @@ import locale
 
 def _is_polish() -> bool:
     try:
-        lang = locale.getlocale()[0] or ""
+        lang = (locale.getlocale()[0] or "").lower()
     except Exception:
         lang = ""
-    return lang.startswith("pl")
+    return lang.startswith("pl") or "polish" in lang
 
 
 _PL = _is_polish()
@@ -67,5 +67,8 @@ def notif_full_power_soon(minutes: int) -> tuple[str, str]:
 
 def notif_restricted_soon(minutes: int) -> tuple[str, str]:
     if _PL:
-        return (f"Zwiększone zużycie za {minutes} min", "Niedługo limity będą się szybciej zużywać.")
+        return (
+            f"Zwiększone zużycie za {minutes} min",
+            "Niedługo limity będą się szybciej zużywać.",
+        )
     return (f"Higher usage in {minutes} min", "Limits will be consumed faster soon.")
