@@ -23,6 +23,7 @@ from PIL import Image, ImageDraw, ImageTk
 
 from peak_hours_manager import PeakHoursManager, PeakState, PeakStatus
 from strings import (
+    AUTOSTART_WARN,
     FULL_POWER_DESC,
     FULL_POWER_HEADER,
     LAUNCH_AT_LOGIN,
@@ -157,6 +158,19 @@ def _make_circle_image(status: PeakStatus) -> Image.Image:
 # ---------------------------------------------------------------------------
 _REG_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 _APP_NAME = "ClaudePeakHours"
+
+
+def _is_unstable_location() -> bool:
+    """Check if the exe is running from Downloads, Desktop, or Temp."""
+    if not getattr(sys, "frozen", False):
+        return False  # running as script — dev mode, skip check
+    exe = os.path.abspath(sys.executable).lower()
+    unstable = [
+        os.path.expanduser("~/Downloads").lower(),
+        os.path.expanduser("~/Desktop").lower(),
+        tempfile.gettempdir().lower(),
+    ]
+    return any(exe.startswith(p) for p in unstable)
 
 
 def _get_autostart() -> bool:
@@ -358,7 +372,28 @@ class PopupWindow:
             side="right")
 
     def _on_autostart(self):
+        if self._autostart_var.get() and _is_unstable_location():
+            self._show_autostart_warning()
+            self._autostart_var.set(False)
+            return
         _set_autostart(self._autostart_var.get())
+
+    def _show_autostart_warning(self):
+        """Show warning label under the autostart toggle."""
+        if hasattr(self, "_warn_label") and self._warn_label:
+            return  # already showing
+        if not self._win:
+            return
+        # Find the frame (first child of win)
+        for child in self._win.winfo_children():
+            self._warn_label = ttk.Label(
+                child, text=AUTOSTART_WARN,
+                font=("Segoe UI", 8),
+                foreground="#c44",
+                wraplength=260,
+            )
+            self._warn_label.pack(anchor="w", pady=(2, 0))
+            break
 
     def _on_notifications(self):
         self.manager.notifications_enabled = self._notif_var.get()

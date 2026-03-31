@@ -46,6 +46,15 @@ LAUNCH_AT_LOGIN = "Uruchom przy starcie" if _PL else "Launch at login"
 NOTIFICATIONS = "Powiadomienia" if _PL else "Notifications"
 QUIT = "Zamknij" if _PL else "Quit"
 
+# Autostart warning
+AUTOSTART_WARN = (
+    "Przenieś .exe do stałej lokalizacji\n"
+    "(np. C:\\Program Files) przed włączeniem autostartu."
+    if _PL else
+    "Move .exe to a permanent location\n"
+    "(e.g. C:\\Program Files) before enabling autostart."
+)
+
 # Notifications
 NOTIF_RESTRICTED_TITLE = "Zwiększone zużycie" if _PL else "Higher usage"
 NOTIF_RESTRICTED_BODY = (
