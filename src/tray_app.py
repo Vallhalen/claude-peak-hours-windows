@@ -164,11 +164,11 @@ def _is_unstable_location() -> bool:
     """Check if the exe is running from Downloads, Desktop, or Temp."""
     if not getattr(sys, "frozen", False):
         return False  # running as script — dev mode, skip check
-    exe = os.path.abspath(sys.executable).lower()
+    exe = os.path.normpath(sys.executable).lower()
     unstable = [
-        os.path.expanduser("~/Downloads").lower(),
-        os.path.expanduser("~/Desktop").lower(),
-        tempfile.gettempdir().lower(),
+        os.path.normpath(os.path.expanduser("~/Downloads")).lower(),
+        os.path.normpath(os.path.expanduser("~/Desktop")).lower(),
+        os.path.normpath(tempfile.gettempdir()).lower(),
     ]
     return any(exe.startswith(p) for p in unstable)
 
